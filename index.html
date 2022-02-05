@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="css/common.css" />
+<link rel="stylesheet" href="lib/font-awesome/css/fontawesome.min.css" />
+<link rel="stylesheet" href="lib/font-awesome/css/solid.min.css" >
+<script type="text/javascript" src="js/jquery-3.6.0.min.js"></script>
+<script type="text/javascript" src="js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="lib/font-awesome/js/fontawesome.min.js"></script>
+<script type="text/javascript" src="js/data.js"></script>
+<script type="text/javascript" src="js/common.js"></script>
+<script type="text/javascript">
+var dataSet = null;
+var currentDropSeq = -1;
+var bindMap = {};
+
+var selectors = [
+	{ query: ".spec-map .item-box", srcType: "main" },				//메인
+	{ query: ".covenants-list .item-box", srcType: "covs" },	//성약단
+	{ query: ".spec-container .clazz-parent .item-box", srcType: "job" },	//직업
+	{ query: ".spec-container .clazz-child .item-box", srcType: "spec" },		//전문화
+];
+
+var instanceSlider = (function(insMap){
+	var imgArr = [];
+	for(var prop in insMap) {
+		imgArr.push(prop);
+	}
+	console.log(imgArr);
+	return new ImageSlider(imgArr, insMap);
+})(ins_data);
+
+var setInstance = function(url, title) {
+	jQuery(".instance-container").css("background-image", "url('"+INSTACNE_IMG_PREFIX+url+"')");
+	jQuery(".instance-container .instance-title").text(title);
+};
+
+var getTargetBox = function(sourceType, idx) {
+	var target = null;
+	switch(sourceType) {
+		case "main" :	//메인맵
+			switch(idx) {
+				case 0: target = ".spec-container .clazz-parent"; break;	//직업
+				case 1: target = ".spec-container .clazz-child"; break;	//전문화
+				case 2: target = ".covenants-list"; break;	//성약단
+			}
+			break;
+		case "covs" :	//성약단
+			switch(idx) {
+				case 0: target = ".spec-map"; break;	//메인맵
+			}
+			break;
+		case "job" : //직업
+			switch(idx) {
+				case 0: target = ".spec-container .clazz-child"; break;	//전문화
+				case 1: target = ".spec-map"; break;	//메인맵
+			}
+			break;
+		case "spec" : //전문화
+			switch(idx) {
+				case 0: target = ".spec-container .clazz-parent"; break;	//직업
+				case 1: target = ".spec-map"; break;	//메인
+			}
+			break;
+	}
+	return target;
+};
+
+var showTitleEditHandler = function() {
+	var $this = jQuery(this);
+	$this.hide();
+	$this.next().addClass("editable").focus();
+};
+
+var hideTitleEditHandler = function() {
+	var $this = jQuery(this);
+	$this.removeClass("editable");
+	$this.prev().text($this.val()).show();
+};
+
+var goToNextDropSeq = function(){
+	jQuery(".droppable-slot").removeClass("droppable-slot");
+	currentDropSeq++;
+	if(currentDropSeq < dropSequences.length){
+		var seqData = dropSequences[currentDropSeq];
+		jQuery("#"+seqData.id).addClass("droppable-slot");
+		return true;
+	} else {
+		currentDropSeq = -1;
+		return false;
+	}
+};
+
+var timerId = null;
+
+var pickTimer = new Timer(60, function(sec){
+	if(sec < 0) {
+		stopTimer();
+		return;
+	}
+
+	var _mm = Math.floor(sec/60);
+	var _ss = sec % 60;
+
+	var timerText = null;
+	if(_mm < 10)	timerText = "0"+_mm;
+	else   				timerText = _mm;
+	timerText += ":";
+	if(_ss < 10)	timerText += "0"+_ss;
+	else   				timerText += _ss;
+
+	var $timer = jQuery(".pick-timer");
+	if(sec < 10) {
+		 $timer.addClass("timer-warning");
+	} else {
+		$timer.removeClass("timer-warning");
+	}
+	$timer.text(timerText);
+});
+
+var startTimer = function(){
+	if(timerId) stopTimer();
+
+	timerId = setInterval(function(){
+		pickTimer.tick();
+	}, 1000);
+};
+
+var resetTimer = function(){
+	pickTimer.init();
+	startTimer();
+};
+
+var stopTimer = function() {
+	clearInterval(timerId);
+	pickTimer.reset();
+}
+
+jQuery(document).ready(function(){
+	dataSet = createData(cov_data, cls_data);
+	renderHead(dataSet.phead, dataSet.head);
+	renderLeftBody(cov_data);
+	renderRightBody(cov_data, dataSet.head);
+
+	jQuery.each(selectors, function(jdx, row){
+		jQuery(row.query).on("mouseover", function(e){
+			jQuery(this).addClass("hovered");
+			jQuery.each(this.clazz_repo, function(idx, selector) {
+				var target = getTargetBox(row.srcType, idx);
+				if(target) {
+					jQuery(target+" "+selector).addClass("hovered");
+				}
+			});
+		}).on("mouseout", function(e){
+			jQuery(this).removeClass("hovered");
+			jQuery.each(this.clazz_repo, function(idx, selector) {
+				var target = getTargetBox(row.srcType, idx);
+				if(target) {
+					jQuery(target+" "+selector).removeClass("hovered");
+				}
+			});
+		});
+	});
+	jQuery(".spec-map .item-box").on("dragstart", function(e){
+		/* check whether selected(banned) or not */
+		/* if checked alert and return false */
+		/* else set data for drag&drop */
+		var specId = this.id;
+		console.log("SPEC-ID="+specId);
+		if(bindMap[specId] !== undefined) {
+			var bindInfo = bindMap[specId];
+			alert("이미 팀 "+bindInfo.team+ " 에 "+(bindInfo.mode == "B" ? "[밴]" : "[픽]")+"으로 선점되어 있습니다.");
+			return;
+		}
+
+		var data = this["data-wow"];
+		var dragObj = e.originalEvent.dataTransfer;
+
+		dragObj.setData("spec-icon", data.getSpecIcon());
+		dragObj.setData("spec-text", data.getSpecText());
+		dragObj.setData("spec-role", data.getSpecRole());
+		dragObj.setData("spec-backgorund", data.getSpecBg());
+		dragObj.setData("cov-icon", data.getCovIcon());
+		dragObj.setData("cov-text", data.getCovText());
+		dragObj.setData("spec-id", specId);
+	});
+
+	jQuery(".team-body .item-slot").on("dragover", function(e){
+		e.preventDefault();
+	}).on("drop", function(e){
+		/* change UI on spec-map */
+		/* save(update) entry-list */
+		var $this = jQuery(this);
+		var slotRole = $this.attr("data-role");
+		if(!$this.hasClass("droppable-slot")) {
+			alert("현재 슬롯은 밴 또는 픽 순서가 아닙니다.");
+			return false;
+		};
+
+		var dropObj = e.originalEvent.dataTransfer;
+
+		var specId = dropObj.getData("spec-id");
+		/*if(jQuery(this).parent().parent().hasClass("")*/
+		var mode = $this.hasClass("bann-slot") ? "B" : "P";
+		var team = $this.parent().hasClass("team-left") ? "A" : "B";
+
+		var specRole = dropObj.getData("spec-role");
+		var specIcon = dropObj.getData("spec-icon");
+		var specText = dropObj.getData("spec-text");
+		var specBackground = dropObj.getData("spec-backgorund");
+		var covIcon = dropObj.getData("cov-icon");
+		var covText = dropObj.getData("cov-text");
+
+		var $content = $this.find(".item-slot-content");
+
+		if(specBackground) {
+			var oldSpecId = $this.attr("bind-spec");
+			if(oldSpecId !== undefined) {
+				bindMap[oldSpecId] = undefined;
+				jQuery("#"+oldSpecId).text("");
+			}
+			if(slotRole != specRole) {
+				var msg = "적합한 역할군이 아닙니다.";
+				switch(slotRole) {
+					case "T": msg += "(탱커 필요)"; break;
+					case "D": msg += "(딜러 필요)"; break;
+					case "H": msg += "(힐러 필요)"; break;
+				}
+				alert(msg);
+				return;
+			}
+
+			$content.removeClass("active");
+
+			$content.css("background-image", "url('"+specBackground+"')");
+			$content.find(".spec-desc i>img").attr("src", specIcon);
+			$content.find(".spec-desc span").text(specText);
+			$content.find(".cov-desc i>img").attr("src", covIcon);
+			$content.find(".cov-desc span").text(covText);
+			$content.addClass("active");
+
+			$this.attr("bind-spec", specId);
+
+			var $spec = jQuery("#"+specId);
+			$spec.text(mode);
+			//$spec.css("color", $this.css("border-color"));
+			$spec.css("color", team == "A" ? "#f16f6f" : "#6f8cf1");
+			bindMap[specId] = {
+					mode : mode,
+					team : team
+			};
+
+			goToNextDropSeq();
+			resetTimer();
+		}
+	});
+
+	jQuery(".slide-btn.left-slide-btn").on("click", function(){
+			var data = instanceSlider.getPrev();
+			setInstance(data["image"], data["name"]);
+	});
+
+	jQuery(".slide-btn.right-slide-btn").on("click", function(){
+		var data = instanceSlider.getNext();
+		setInstance(data["image"], data["name"]);
+	}).click();
+
+	jQuery(".title-text").on("click", showTitleEditHandler);
+	jQuery(".title-edit").on("keypress", function(e){
+		if(e.keyCode == 13) {
+			hideTitleEditHandler();
+		}
+	}).on("blur", hideTitleEditHandler);
+
+	jQuery("#start-pick-btn").on("click", function(){
+		startTimer();
+		goToNextDropSeq();
+	});
+
+	jQuery("#reset-pick-btn").on("click", function(){
+		stopTimer();
+		pickTimer.init();
+		currentDropSeq = -1;
+		jQuery(".droppable-slot").removeClass("droppable-slot");
+	});
+
+	pickTimer.init();
+});
+</script>
+</head>
+<body>
+<!--div-->
+<div class="instance-container">
+	<span class="slide-btn left-slide-btn"><i class="fas fa-arrow-circle-left "></i></span>
+	<span class="slide-btn right-slide-btn"><i class="fas fa-arrow-circle-right"></i></span>
+	<span class="instance-title">저편</span>
+</div>
+<div class="centered-box" id="ban-team-box">
+	<div class="team-title team-title-left">
+			<span class="title-text">팀A</span>
+			<input type="text"  class="title-edit" value="팀A"/>
+	</div>
+	<div class="team-title team-title-right">
+		<span class="title-text">팀B</span>
+		<input type="text"  class="title-edit" value="팀B"/>
+	</div>
+	<div class="pick-timer">00:00</div>
+	<div class="pick-control-panel">
+			<button type="button" id="start-pick-btn">시작</button><br/>
+			<button type="button" id="reset-pick-btn">초기화</button>
+	</div>
+	<!--
+	<div class="row-container team-title">
+		<div class="item-box" style="background-color:#F05146;">팀A</div>
+		<div class="item-box" style="background-color:#5A54F0;">팀B</div>
+	</div>
+	-->
+	<div class="row-container team-body team-banned">
+		<div class="item-box team-left">
+			<div class="item-slot bann-slot" id="team-A-ban-1" data-role="T">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-A-ban-2" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-A-ban-3" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-A-ban-4" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-A-ban-5" data-role="H">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+		</div>
+		<div class="item-box team-right">
+			<div class="item-slot bann-slot" id="team-B-ban-1" data-role="T">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-B-ban-2" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-B-ban-3" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-B-ban-4" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+			<div class="item-slot bann-slot" id="team-B-ban-5" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row-container team-body">
+		<div class="item-box team-left">
+			<div class="item-slot" id="team-A-pick-1" data-role="T">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap big-slot-gap"></div>
+			<div class="item-slot" id="team-A-pick-2" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap"></div>
+			<div class="item-slot" id="team-A-pick-3" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap"></div>
+			<div class="item-slot" id="team-A-pick-4" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap big-slot-gap"></div>
+			<div class="item-slot" id="team-A-pick-5" data-role="H">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div>
+		</div>
+		<div class="item-box team-right">
+			<div class="item-slot" id="team-B-pick-1" data-role="T">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap big-slot-gap"></div>
+			<div class="item-slot" id="team-B-pick-2" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap"></div>
+			<div class="item-slot" id="team-B-pick-3" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap"></div>
+			<div class="item-slot" id="team-B-pick-4" data-role="D">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div><div class="slot-gap big-slot-gap"></div>
+			<div class="item-slot" id="team-B-pick-5" data-role="H">
+				<div class="item-slot-content">
+					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<div class="centered-box" id="ban-spec-list">
+	<div class="table-container spec-container">
+		<div class="left-container"></div>
+		<div class="right-container clazz-list">
+			<div class="row-container clazz-parent"></div>
+			<div class="row-container clazz-child"></div>
+		</div>
+	</div>
+	<div class="table-container spec-container">
+		<div class="left-container covenants-list"></div>
+		<div class="right-container spec-map"></div>
+	</div>
+</div>
+<!--/div-->
+<div class="author-mark">
+		<img src="img/author.jpg">
+		Powered by 웅도리-하이잘
+</div>
+</body>
+</html>
