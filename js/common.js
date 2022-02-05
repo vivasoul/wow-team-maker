@@ -9,7 +9,7 @@ var WowSpec = function(spec, cov) {
 	const _spec_bg = spec.portrait;
 	const _cov_icon = cov.image;
 	const _cov_text = cov.name;
-	const _id = spec.id +"-"+cov.id;
+	const _id = spec.id +"-"+cov.clazz;
 
 	this.getSpecRole = function() { return _spec_role };
 	this.getSpecIcon = function() { return TALENT_IMG_PREFIX+_spec_icon };
@@ -156,14 +156,14 @@ var renderRightBody = function(covs, head) {
 		row.style.marginBottom="6px";
 		for(var i=0; i<head.length; i++) {
 			var h = head[i];
-
+			var wowSpec = new WowSpec(h, covs[c]);
 			var div = document.createElement("div");
 			div.className = "item-box "+h.clazz+" "+cov_clazz;
 			div.draggable = true;
 			div.clazz_repo = h.clazz_repo.concat("."+cov_clazz);
-			div.id = h.id+"-"+c;
+			div.id = wowSpec.getId();
 			//div["data-portrait"] = h.portrait;
-			div["data-wow"] = new WowSpec(h, covs[c]);
+			div["data-wow"] = wowSpec;
 			row.appendChild(div);
 		}
 		bodyArr.push(row);

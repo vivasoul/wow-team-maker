@@ -11,6 +11,7 @@
 <script type="text/javascript" src="js/data.js"></script>
 <script type="text/javascript" src="js/common.js"></script>
 <script type="text/javascript">
+var DEFAULT_TIMER_SECONDS = 60;
 var dataSet = null;
 var currentDropSeq = -1;
 var bindMap = {};
@@ -27,7 +28,7 @@ var instanceSlider = (function(insMap){
 	for(var prop in insMap) {
 		imgArr.push(prop);
 	}
-	console.log(imgArr);
+
 	return new ImageSlider(imgArr, insMap);
 })(ins_data);
 
@@ -67,34 +68,10 @@ var getTargetBox = function(sourceType, idx) {
 	return target;
 };
 
-var showTitleEditHandler = function() {
-	var $this = jQuery(this);
-	$this.hide();
-	$this.next().addClass("editable").focus();
-};
-
-var hideTitleEditHandler = function() {
-	var $this = jQuery(this);
-	$this.removeClass("editable");
-	$this.prev().text($this.val()).show();
-};
-
-var goToNextDropSeq = function(){
-	jQuery(".droppable-slot").removeClass("droppable-slot");
-	currentDropSeq++;
-	if(currentDropSeq < dropSequences.length){
-		var seqData = dropSequences[currentDropSeq];
-		jQuery("#"+seqData.id).addClass("droppable-slot");
-		return true;
-	} else {
-		currentDropSeq = -1;
-		return false;
-	}
-};
 
 var timerId = null;
 
-var pickTimer = new Timer(60, function(sec){
+var pickTimer = new Timer(DEFAULT_TIMER_SECONDS, function(sec){
 	if(sec < 0) {
 		stopTimer();
 		return;
@@ -111,8 +88,11 @@ var pickTimer = new Timer(60, function(sec){
 	else   				timerText += _ss;
 
 	var $timer = jQuery(".pick-timer");
-	if(sec < 10) {
-		 $timer.addClass("timer-warning");
+	if (sec < 1) {
+		var seq =	dropSequences[currentDropSeq];
+		jQuery("#"+seq.id).addClass("time-over");
+	} else if(sec < 10) {
+		$timer.addClass("timer-warning");
 	} else {
 		$timer.removeClass("timer-warning");
 	}
@@ -135,7 +115,137 @@ var resetTimer = function(){
 var stopTimer = function() {
 	clearInterval(timerId);
 	pickTimer.reset();
-}
+};
+
+var showTitleEditHandler = function() {
+	var $this = jQuery(this);
+	$this.hide();
+	$this.next().addClass("editable").focus();
+};
+
+var hideTitleEditHandler = function() {
+	var $this = jQuery(this);
+	$this.removeClass("editable");
+	$this.prev().text($this.val()).show();
+};
+
+var goToNextDropSeq = function(){
+	jQuery(".droppable-slot").removeClass("droppable-slot");
+	jQuery(".droppable-slot .item-slot-text").text("");
+	currentDropSeq++;
+	if(currentDropSeq < dropSequences.length){
+		var seqData = dropSequences[currentDropSeq];
+		jQuery("#"+seqData.id).addClass("droppable-slot")
+													.find(".item-slot-text").addClass("active").text(seqData.desc);
+		createBannerAlert(seqData.team);
+		return true;
+	} else {
+		currentDropSeq = -1;
+		return false;
+	}
+};
+
+var getTeamColor = function(team) {
+	return team == "A" ? "#f16f6f" : "#6f8cf1";
+};
+
+var getTeamName = function(team) {
+	return team == "A" ? jQuery(".team-title-left .title-edit").val() : jQuery(".team-title-right .title-edit").val();
+};
+
+var createBannerAlert = function(teamType) {
+	jQuery(".banner-alert").remove();
+	var teamName = getTeamName(teamType);
+	var teamColor = getTeamColor(teamType);
+
+	var pdiv = document.createElement("div");
+	pdiv.className="banner-alert";
+		var div = document.createElement("div");
+		div.className="banner-alert-msg";
+		div.innerHTML=teamName+"'S TURN!"
+		div.style.color=teamColor;
+	pdiv.appendChild(div);
+
+	jQuery(document.body).prepend(pdiv);
+};
+
+var onSelectSpecMap = function($spec, callback) {
+	/* check whether selected(banned) or not */
+	/* if checked alert and return false */
+	/* else set data for drag&drop */
+	var specId = $spec.prop("id");
+	//console.log("SPEC-ID="+specId);
+	if(bindMap[specId] !== undefined) {
+		var bindInfo = bindMap[specId];
+		alert("이미 팀 "+bindInfo.team+ " 에 "+(bindInfo.mode == "B" ? "[밴]" : "[픽]")+"으로 선점되어 있습니다.");
+	} else {
+		var data = $spec.prop("data-wow");
+		callback(data);
+	}
+};
+
+var setItemSlot = function($this, wowSpec) {
+	var slotRole = $this.attr("data-role");
+	if(!$this.hasClass("droppable-slot")) {
+		alert("현재 슬롯은 밴 또는 픽 순서가 아닙니다.");
+		return false;
+	};
+
+	var specId = wowSpec.getId();
+	/*if(jQuery(this).parent().parent().hasClass("")*/
+	var mode = $this.hasClass("bann-slot") ? "B" : "P";
+	var team = $this.parent().hasClass("team-left") ? "A" : "B";
+
+	var specRole = wowSpec.getSpecRole();
+	var specIcon = wowSpec.getSpecIcon();
+	var specText = wowSpec.getSpecText();
+	var specBackground = wowSpec.getSpecBg();
+	var covIcon = wowSpec.getCovIcon();
+	var covText = wowSpec.getCovText();
+
+	var $content = $this.find(".item-slot-content");
+
+	if(specBackground) {
+		var oldSpecId = $this.attr("bind-spec");
+		if(oldSpecId !== undefined) {
+			bindMap[oldSpecId] = undefined;
+			jQuery("#"+oldSpecId).text("");
+		}
+		if(slotRole != specRole) {
+			var msg = "적합한 역할군이 아닙니다.";
+			switch(slotRole) {
+				case "T": msg += "(탱커 필요)"; break;
+				case "D": msg += "(딜러 필요)"; break;
+				case "H": msg += "(힐러 필요)"; break;
+			}
+			alert(msg);
+			return;
+		}
+		$this.find(".item-slot-text").removeClass("active");
+		$content.removeClass("active");
+
+		$content.css("background-image", "url('"+specBackground+"')");
+		$content.find(".spec-desc i>img").attr("src", specIcon);
+		$content.find(".spec-desc span").text(specText);
+		$content.find(".cov-desc i>img").attr("src", covIcon);
+		$content.find(".cov-desc span").text(covText);
+		$content.addClass("active");
+
+		$this.attr("bind-spec", specId);
+		//console.log(specId);
+		var $spec = jQuery("#"+specId);
+		$spec.text(mode);
+		//$spec.css("color", $this.css("border-color"));
+		$spec.css("color", getTeamColor(team));
+		bindMap[specId] = {
+				mode : mode,
+				team : getTeamName(team)
+		};
+
+		goToNextDropSeq();
+		resetTimer();
+	}
+};
 
 jQuery(document).ready(function(){
 	dataSet = createData(cov_data, cls_data);
@@ -163,27 +273,29 @@ jQuery(document).ready(function(){
 		});
 	});
 	jQuery(".spec-map .item-box").on("dragstart", function(e){
-		/* check whether selected(banned) or not */
-		/* if checked alert and return false */
-		/* else set data for drag&drop */
-		var specId = this.id;
-		console.log("SPEC-ID="+specId);
-		if(bindMap[specId] !== undefined) {
-			var bindInfo = bindMap[specId];
-			alert("이미 팀 "+bindInfo.team+ " 에 "+(bindInfo.mode == "B" ? "[밴]" : "[픽]")+"으로 선점되어 있습니다.");
-			return;
-		}
+		onSelectSpecMap(jQuery(this), function(data){
+			var dragObj = e.originalEvent.dataTransfer;
 
-		var data = this["data-wow"];
-		var dragObj = e.originalEvent.dataTransfer;
+			/*
+			dragObj.setData("spec-icon", data.getSpecIcon());
+			dragObj.setData("spec-text", data.getSpecText());
+			dragObj.setData("spec-role", data.getSpecRole());
+			dragObj.setData("spec-backgorund", data.getSpecBg());
+			dragObj.setData("cov-icon", data.getCovIcon());
+			dragObj.setData("cov-text", data.getCovText());
+			dragObj.setData("spec-id", specId);
+			*/
+			dragObj.setData("data-wow", data);
+		});
+	}).on("click", function(){
+		onSelectSpecMap(jQuery(this), function(data){
+			var seqData = dropSequences[currentDropSeq];
 
-		dragObj.setData("spec-icon", data.getSpecIcon());
-		dragObj.setData("spec-text", data.getSpecText());
-		dragObj.setData("spec-role", data.getSpecRole());
-		dragObj.setData("spec-backgorund", data.getSpecBg());
-		dragObj.setData("cov-icon", data.getCovIcon());
-		dragObj.setData("cov-text", data.getCovText());
-		dragObj.setData("spec-id", specId);
+			if(seqData) {
+				var $slot = jQuery("#"+seqData.id);
+				setItemSlot($slot, data);
+			};
+		});
 	});
 
 	jQuery(".team-body .item-slot").on("dragover", function(e){
@@ -191,69 +303,10 @@ jQuery(document).ready(function(){
 	}).on("drop", function(e){
 		/* change UI on spec-map */
 		/* save(update) entry-list */
-		var $this = jQuery(this);
-		var slotRole = $this.attr("data-role");
-		if(!$this.hasClass("droppable-slot")) {
-			alert("현재 슬롯은 밴 또는 픽 순서가 아닙니다.");
-			return false;
-		};
-
 		var dropObj = e.originalEvent.dataTransfer;
+		var $this = jQuery(this);
 
-		var specId = dropObj.getData("spec-id");
-		/*if(jQuery(this).parent().parent().hasClass("")*/
-		var mode = $this.hasClass("bann-slot") ? "B" : "P";
-		var team = $this.parent().hasClass("team-left") ? "A" : "B";
-
-		var specRole = dropObj.getData("spec-role");
-		var specIcon = dropObj.getData("spec-icon");
-		var specText = dropObj.getData("spec-text");
-		var specBackground = dropObj.getData("spec-backgorund");
-		var covIcon = dropObj.getData("cov-icon");
-		var covText = dropObj.getData("cov-text");
-
-		var $content = $this.find(".item-slot-content");
-
-		if(specBackground) {
-			var oldSpecId = $this.attr("bind-spec");
-			if(oldSpecId !== undefined) {
-				bindMap[oldSpecId] = undefined;
-				jQuery("#"+oldSpecId).text("");
-			}
-			if(slotRole != specRole) {
-				var msg = "적합한 역할군이 아닙니다.";
-				switch(slotRole) {
-					case "T": msg += "(탱커 필요)"; break;
-					case "D": msg += "(딜러 필요)"; break;
-					case "H": msg += "(힐러 필요)"; break;
-				}
-				alert(msg);
-				return;
-			}
-
-			$content.removeClass("active");
-
-			$content.css("background-image", "url('"+specBackground+"')");
-			$content.find(".spec-desc i>img").attr("src", specIcon);
-			$content.find(".spec-desc span").text(specText);
-			$content.find(".cov-desc i>img").attr("src", covIcon);
-			$content.find(".cov-desc span").text(covText);
-			$content.addClass("active");
-
-			$this.attr("bind-spec", specId);
-
-			var $spec = jQuery("#"+specId);
-			$spec.text(mode);
-			//$spec.css("color", $this.css("border-color"));
-			$spec.css("color", team == "A" ? "#f16f6f" : "#6f8cf1");
-			bindMap[specId] = {
-					mode : mode,
-					team : team
-			};
-
-			goToNextDropSeq();
-			resetTimer();
-		}
+		setItemSlot($this, dropObj);
 	});
 
 	jQuery(".slide-btn.left-slide-btn").on("click", function(){
@@ -274,15 +327,19 @@ jQuery(document).ready(function(){
 	}).on("blur", hideTitleEditHandler);
 
 	jQuery("#start-pick-btn").on("click", function(){
+		jQuery(this).hide();
 		startTimer();
 		goToNextDropSeq();
 	});
 
 	jQuery("#reset-pick-btn").on("click", function(){
+		/*
 		stopTimer();
 		pickTimer.init();
 		currentDropSeq = -1;
 		jQuery(".droppable-slot").removeClass("droppable-slot");
+		*/
+		location.reload();
 	});
 
 	pickTimer.init();
@@ -317,133 +374,173 @@ jQuery(document).ready(function(){
 	</div>
 	-->
 	<div class="row-container team-body team-banned">
-		<div class="item-box team-left">
-			<div class="item-slot bann-slot" id="team-A-ban-1" data-role="T">
+		<div class="item-box team-left"><!--
+	 --><div class="item-slot bann-slot" id="team-A-ban-1" data-role="T">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-A-ban-2" data-role="D">
+			</div><div class="slot-gap big-slot-gap"></div><!--
+	 --><div class="item-slot bann-slot" id="team-A-ban-2" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-A-ban-3" data-role="D">
+			</div><div class="slot-gap"></div><!--
+	 --><div class="item-slot bann-slot" id="team-A-ban-3" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-A-ban-4" data-role="D">
+	 	 </div><div class="slot-gap"></div><!--
+	--><div class="item-slot bann-slot" id="team-A-ban-4" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-A-ban-5" data-role="H">
+	 	 </div><div class="slot-gap big-slot-gap"></div><!--
+	--><div class="item-slot bann-slot" id="team-A-ban-5" data-role="H">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
-			</div>
-		</div>
-		<div class="item-box team-right">
-			<div class="item-slot bann-slot" id="team-B-ban-1" data-role="T">
-				<div class="item-slot-content">
-					<div class="item-desc spec-desc"><i><img src=""/></i></div>
-					<div class="item-desc cov-desc"><i><img src=""/></i></div>
-				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-B-ban-2" data-role="D">
-				<div class="item-slot-content">
-					<div class="item-desc spec-desc"><i><img src=""/></i></div>
-					<div class="item-desc cov-desc"><i><img src=""/></i></div>
-				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-B-ban-3" data-role="D">
-				<div class="item-slot-content">
-					<div class="item-desc spec-desc"><i><img src=""/></i></div>
-					<div class="item-desc cov-desc"><i><img src=""/></i></div>
-				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-B-ban-4" data-role="D">
-				<div class="item-slot-content">
-					<div class="item-desc spec-desc"><i><img src=""/></i></div>
-					<div class="item-desc cov-desc"><i><img src=""/></i></div>
-				</div>
-			</div>
-			<div class="item-slot bann-slot" id="team-B-ban-5" data-role="D">
-				<div class="item-slot-content">
-					<div class="item-desc spec-desc"><i><img src=""/></i></div>
-					<div class="item-desc cov-desc"><i><img src=""/></i></div>
-				</div>
-			</div>
-		</div>
+			</div><!--
+ --></div>
+	 <div class="item-box team-right"><!--
+	--><div class="item-slot bann-slot" id="team-B-ban-1" data-role="T">
+			 <div class="item-slot-text"></div>
+			 <div class="item-slot-content">
+				 <div class="item-desc spec-desc"><i><img src=""/></i></div>
+				 <div class="item-desc cov-desc"><i><img src=""/></i></div>
+				 <div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
+			 </div>
+		 </div><div class="slot-gap big-slot-gap"></div><!--
+	--><div class="item-slot bann-slot" id="team-B-ban-2" data-role="D">
+			 <div class="item-slot-text"></div>
+			 <div class="item-slot-content">
+				 <div class="item-desc spec-desc"><i><img src=""/></i></div>
+				 <div class="item-desc cov-desc"><i><img src=""/></i></div>
+				 <div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
+			 </div>
+		 </div><div class="slot-gap"></div><!--
+	--><div class="item-slot bann-slot" id="team-B-ban-3" data-role="D">
+			 <div class="item-slot-text"></div>
+			 <div class="item-slot-content">
+				 <div class="item-desc spec-desc"><i><img src=""/></i></div>
+				 <div class="item-desc cov-desc"><i><img src=""/></i></div>
+				 <div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
+			 </div>
+		</div><div class="slot-gap"></div><!--
+	--><div class="item-slot bann-slot" id="team-B-ban-4" data-role="D">
+			 <div class="item-slot-text"></div>
+			 <div class="item-slot-content">
+				 <div class="item-desc spec-desc"><i><img src=""/></i></div>
+				 <div class="item-desc cov-desc"><i><img src=""/></i></div>
+				 <div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
+			 </div>
+		</div><div class="slot-gap big-slot-gap"></div><!--
+	--><div class="item-slot bann-slot" id="team-B-ban-5" data-role="H">
+			 <div class="item-slot-text"></div>
+			 <div class="item-slot-content">
+				 <div class="item-desc spec-desc"><i><img src=""/></i></div>
+				 <div class="item-desc cov-desc"><i><img src=""/></i></div>
+				 <div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
+			 </div>
+		 </div><!--
+	--></div>
 	</div>
 	<div class="row-container team-body">
 		<div class="item-box team-left">
 			<div class="item-slot" id="team-A-pick-1" data-role="T">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap big-slot-gap"></div>
 			<div class="item-slot" id="team-A-pick-2" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap"></div>
 			<div class="item-slot" id="team-A-pick-3" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap"></div>
 			<div class="item-slot" id="team-A-pick-4" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap big-slot-gap"></div>
 			<div class="item-slot" id="team-A-pick-5" data-role="H">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div>
 		</div>
 		<div class="item-box team-right">
 			<div class="item-slot" id="team-B-pick-1" data-role="T">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap big-slot-gap"></div>
 			<div class="item-slot" id="team-B-pick-2" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap"></div>
 			<div class="item-slot" id="team-B-pick-3" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap"></div>
 			<div class="item-slot" id="team-B-pick-4" data-role="D">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div><div class="slot-gap big-slot-gap"></div>
 			<div class="item-slot" id="team-B-pick-5" data-role="H">
+				<div class="item-slot-text"></div>
 				<div class="item-slot-content">
 					<div class="item-desc spec-desc"><i><img src=""/></i><span></span></div>
 					<div class="item-desc cov-desc"><i><img src=""/></i><span></span></div>
+					<div class="item-desc penalty-desc"><i class="fas fa-heart-broken"></i></div>
 				</div>
 			</div>
 		</div>
