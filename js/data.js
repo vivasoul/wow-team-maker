@@ -154,8 +154,8 @@ var dropSequences = [
   { id: "team-B-pick-3", desc: "딜러픽2(후공)", team:"B" },
   { id: "team-B-pick-4", desc: "딜러픽3(후공)", team:"B" },
   { id: "team-A-pick-4", desc: "딜러픽3(선공)", team:"A" },
-  { id: "team-B-pick-5", desc: "힐러밴(후공)", team:"B" },
+  { id: "team-B-ban-5", desc: "힐러밴(후공)", team:"B" },
   { id: "team-A-ban-5", desc: "힐러밴(선공)", team:"A" },
   { id: "team-B-pick-5", desc: "힐러픽(후공)", team:"B" },
-  { id: "team-A-ban-5", desc: "힐러픽(선공)", team:"A" }
+  { id: "team-A-pick-5", desc: "힐러픽(선공)", team:"A" }
 ];

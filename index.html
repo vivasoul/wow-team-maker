@@ -11,7 +11,7 @@
 <script type="text/javascript" src="js/data.js"></script>
 <script type="text/javascript" src="js/common.js"></script>
 <script type="text/javascript">
-var DEFAULT_TIMER_SECONDS = 60;
+var DEFAULT_TIMER_SECONDS = 45;
 var dataSet = null;
 var currentDropSeq = -1;
 var bindMap = {};
@@ -306,7 +306,7 @@ jQuery(document).ready(function(){
 		var dropObj = e.originalEvent.dataTransfer;
 		var $this = jQuery(this);
 
-		setItemSlot($this, dropObj);
+		setItemSlot($this, dropObj.getData("data-wow"));
 	});
 
 	jQuery(".slide-btn.left-slide-btn").on("click", function(){
