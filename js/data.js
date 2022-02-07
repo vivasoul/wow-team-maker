@@ -12,7 +12,7 @@ var cov_data = {
 	"kyrian"		: { image: "ui_sigil_kyrian.jpg", "name": "키리안", clazz: "cov-kyrian" },
 	"necrolord"	: { image: "ui_sigil_necrolord.jpg", "name": "강령술사", clazz: "cov-necrolord" },
 	"nightfae"	: { image: "ui_sigil_nightfae.jpg", "name": "나이트페이", clazz: "cov-nightfae" },
-	"venthyr"		: { image: "ui_sigil_venthyr.jpg", "name": "벤티트", clazz: "cov-venthyr" }
+	"venthyr"		: { image: "ui_sigil_venthyr.jpg", "name": "벤티르", clazz: "cov-venthyr" }
 };
 var cls_data = {
 	"death_knight"	: {
@@ -130,7 +130,7 @@ var cls_data = {
 		name: "전사",
 		clazz: "job-worrior",
 		specializations: [
-			{ image: "worrior/방어.jpg", role: "T", name: "방전", clazz: "spec-worrior-1", portrait: "worrior/classes-warrior-protection.jpg" },
+			{ image: "worrior/방어.jpg", role: "T", name: "전탱", clazz: "spec-worrior-1", portrait: "worrior/classes-warrior-protection.jpg" },
 			{ image: "worrior/무기.jpg", role: "D", name: "무전", clazz: "spec-worrior-2", portrait: "worrior/classes-warrior-arms.jpg" },
 			{ image: "worrior/분노.jpg", role: "D", name: "분전", clazz: "spec-worrior-3", portrait: "worrior/classes-warrior-fury.jpg" }
 		]

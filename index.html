@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<link rel="stylesheet" href="css/jquery-ui.min.css" />
 <link rel="stylesheet" href="css/common.css" />
 <link rel="stylesheet" href="lib/font-awesome/css/fontawesome.min.css" />
 <link rel="stylesheet" href="lib/font-awesome/css/solid.min.css" >
@@ -255,9 +256,20 @@ var setItemSlot = function($this, wowSpec) {
 				team : getTeamName(team)
 		};
 
-		goToNextDropSeq();
-		resetTimer();
+		if(goToNextDropSeq()) {
+			resetTimer();
+		} else {
+			stopTimer();
+			jQuery(".pick-timer").text("READY TO GO!").removeClass("timer-warning").css("color", "#00ff5a");
+		}
+		resetSearch();
 	}
+};
+
+var resetSearch = function() {
+	var $box = jQuery(".spec-search-box");
+	$box.find(".spec-search-icon").css("background-image", "");
+	$box.find(".spec-searh-input").val("");
 };
 
 jQuery(document).ready(function(){
@@ -289,15 +301,7 @@ jQuery(document).ready(function(){
 		onSelectSpecMap(jQuery(this), function(data){
 			var dragObj = e.originalEvent.dataTransfer;
 
-			/*
-			dragObj.setData("spec-icon", data.getSpecIcon());
-			dragObj.setData("spec-text", data.getSpecText());
-			dragObj.setData("spec-role", data.getSpecRole());
-			dragObj.setData("spec-backgorund", data.getSpecBg());
-			dragObj.setData("cov-icon", data.getCovIcon());
-			dragObj.setData("cov-text", data.getCovText());
-			dragObj.setData("spec-id", specId);
-			*/
+			//Deprecated
 			dragObj.setData("data-wow", data);
 		});
 	}).on("click", function(){
@@ -307,6 +311,8 @@ jQuery(document).ready(function(){
 			if(seqData) {
 				var $slot = jQuery("#"+seqData.id);
 				setItemSlot($slot, data);
+			} else {
+				pickAlert("픽/밴이 진행 중이 아닙니다.");
 			};
 		});
 	});
@@ -342,6 +348,7 @@ jQuery(document).ready(function(){
 	jQuery("#start-pick-btn").on("click", function(){
 		jQuery(this).hide();
 		startTimer();
+		resetSearch();
 		goToNextDropSeq();
 	});
 
@@ -355,12 +362,47 @@ jQuery(document).ready(function(){
 		location.reload();
 	});
 
+	jQuery("#cov-search").autocomplete({
+			source: getCovSourcesForAC(cov_data),
+			select: function(e, ui) {
+				var data = ui.item;
+				jQuery(this).prev().css("background-image","url('"+data.icon+"')");
+				jQuery("#cov-key").val(data.key);
+			}
+	}).on("focus", function(){
+		jQuery(this).autocomplete("search", this.value);
+	});
+
+	jQuery("#job-search").autocomplete({
+			source: getJobSourcesForAC(dataSet.head),
+			select: function(e, ui) {
+				var data = ui.item;
+				jQuery(this).prev().css("background-image","url('"+data.icon+"')");
+				jQuery("#job-key").val(data.key);
+			}
+	}).on("focus", function(){
+		jQuery(this).autocomplete("search", this.value);
+	});
+
+	jQuery("#search-confirm-btn").on("click", function(){
+		var covKey = jQuery("#cov-key").val();
+		var jobKey = jQuery("#job-key").val();
+		if(!covKey) {
+			pickAlert("성약단을 선택하세요.");
+		} else if(!jobKey) {
+			pickAlert("직업을 선택하세요.");
+		} else {
+			var combinedKey = "#"+jobKey+"-"+covKey;
+			console.log(combinedKey);
+			jQuery(combinedKey).click();
+		}
+	});
+
+	jQuery("#search-reset-btn").on("click", function(){
+		resetSearch();
+	});
+
 	pickTimer.init();
-	jQuery("#cov-search").autocomplete({source: [ { "value": "java1", "key": "123"} ]})
-											.on("autocompleteresponse", function(e, ui){
-												console.log(e);
-												console.log(ui);
-											});
 });
 </script>
 </head>
@@ -568,14 +610,14 @@ jQuery(document).ready(function(){
 <div class="centered-box" id="ban-spec-list">
 	<div class="table-container spec-container">
 		<div class="left-container">
-			<input id="cov-search"/>
-			<select id="cov-selector">
-					<option value="">선택</option>
-			</select><br/>
-			<select>
-					<option value="">선택</option>
-			</select><br/>
-			<button>확정</button>
+				<div class="spec-search-box">
+					<div class="spec-search-icon"></div><input type="text" class="spec-searh-input" id="cov-search" placeholder="성약단"/><br/>
+					<div class="spec-search-icon"></div><input type="text" class="spec-searh-input" id="job-search" placeholder="직업"/><br/>
+					<button type="button" class="spec-searh-btn" id="search-confirm-btn">선택</button>
+					<button type="button" class="spec-searh-btn" id="search-reset-btn">초기화</button>
+					<input type="hidden" class="spec-searh-input" id="cov-key" value="" />
+					<input type="hidden" class="spec-searh-input" id="job-key" value="" />
+				</div>
 		</div>
 		<div class="right-container clazz-list">
 			<div class="row-container clazz-parent"></div>

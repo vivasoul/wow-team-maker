@@ -216,3 +216,17 @@ var renderRightBody = function(covs, head) {
 	}
 	$right.append(bodyArr);
 };
+
+var getCovSourcesForAC = function(data) {
+	var result = [];
+	for(var prop in data) {
+		var row = data[prop];
+		result.push( { icon:COVENANT_IMG_PREFIX+row["image"], value: row["name"], key:row["clazz"] });
+	}
+
+	return result;
+};
+
+var getJobSourcesForAC = function(arr) {
+	return arr.map( e => { return { icon: TALENT_IMG_PREFIX+e.image, value:e.name, key: e.id } } );
+};
