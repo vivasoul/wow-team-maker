@@ -137,7 +137,7 @@ var goToNextDropSeq = function(){
 		var seqData = dropSequences[currentDropSeq];
 		jQuery("#"+seqData.id).addClass("droppable-slot")
 													.find(".item-slot-text").addClass("active").text(seqData.desc);
-		createBannerAlert(seqData.team);
+		bannerAlert(seqData.team);
 		return true;
 	} else {
 		currentDropSeq = -1;
@@ -153,7 +153,7 @@ var getTeamName = function(team) {
 	return team == "A" ? jQuery(".team-title-left .title-edit").val() : jQuery(".team-title-right .title-edit").val();
 };
 
-var createBannerAlert = function(teamType) {
+var bannerAlert = function(teamType) {
 	jQuery(".banner-alert").remove();
 	var teamName = getTeamName(teamType);
 	var teamColor = getTeamColor(teamType);
@@ -169,6 +169,19 @@ var createBannerAlert = function(teamType) {
 	jQuery(document.body).prepend(pdiv);
 };
 
+var pickAlert = function(msg) {
+	jQuery("#pick-alert-container .pick-alert").remove();
+
+	var pdiv = document.createElement("div");
+	pdiv.className="pick-alert";
+		var div = document.createElement("div");
+		div.className="pick-alert-msg";
+		div.innerHTML=msg;
+	pdiv.appendChild(div);
+
+	jQuery(".pick-alert-container").prepend(pdiv);
+};
+
 var onSelectSpecMap = function($spec, callback) {
 	/* check whether selected(banned) or not */
 	/* if checked alert and return false */
@@ -177,7 +190,7 @@ var onSelectSpecMap = function($spec, callback) {
 	//console.log("SPEC-ID="+specId);
 	if(bindMap[specId] !== undefined) {
 		var bindInfo = bindMap[specId];
-		alert("이미 팀 "+bindInfo.team+ " 에 "+(bindInfo.mode == "B" ? "[밴]" : "[픽]")+"으로 선점되어 있습니다.");
+		pickAlert("이미 팀 "+getTeamName(bindInfo.team)+ " 에 "+(bindInfo.mode == "B" ? "[밴]" : "[픽]")+"으로 선점되어 있습니다.");
 	} else {
 		var data = $spec.prop("data-wow");
 		callback(data);
@@ -187,7 +200,7 @@ var onSelectSpecMap = function($spec, callback) {
 var setItemSlot = function($this, wowSpec) {
 	var slotRole = $this.attr("data-role");
 	if(!$this.hasClass("droppable-slot")) {
-		alert("현재 슬롯은 밴 또는 픽 순서가 아닙니다.");
+		pickAlert("현재 슬롯은 밴 또는 픽 순서가 아닙니다.");
 		return false;
 	};
 
@@ -218,7 +231,7 @@ var setItemSlot = function($this, wowSpec) {
 				case "D": msg += "(딜러 필요)"; break;
 				case "H": msg += "(힐러 필요)"; break;
 			}
-			alert(msg);
+			pickAlert(msg);
 			return;
 		}
 		$this.find(".item-slot-text").removeClass("active");
@@ -343,6 +356,11 @@ jQuery(document).ready(function(){
 	});
 
 	pickTimer.init();
+	jQuery("#cov-search").autocomplete({source: [ { "value": "java1", "key": "123"} ]})
+											.on("autocompleteresponse", function(e, ui){
+												console.log(e);
+												console.log(ui);
+											});
 });
 </script>
 </head>
@@ -546,9 +564,19 @@ jQuery(document).ready(function(){
 		</div>
 	</div>
 </div>
+<div class="centered-box pick-alert-container"></div>
 <div class="centered-box" id="ban-spec-list">
 	<div class="table-container spec-container">
-		<div class="left-container"></div>
+		<div class="left-container">
+			<input id="cov-search"/>
+			<select id="cov-selector">
+					<option value="">선택</option>
+			</select><br/>
+			<select>
+					<option value="">선택</option>
+			</select><br/>
+			<button>확정</button>
+		</div>
 		<div class="right-container clazz-list">
 			<div class="row-container clazz-parent"></div>
 			<div class="row-container clazz-child"></div>

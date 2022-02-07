@@ -20,6 +20,52 @@ var WowSpec = function(spec, cov) {
 	this.getId = function() { return _id };
 };
 
+var ImageSlider = function(keys, mapData) {
+	var _arr = keys;
+	var _idx = -1;
+	var MAX_IDX = _arr.length -1;
+	var MIN_IDX = 0;
+
+	this.getNext = function() {
+		_idx ++;
+
+		if(_idx > MAX_IDX) _idx = MIN_IDX;
+
+		return mapData[_arr[_idx]];
+	};
+
+	this.getPrev = function() {
+		_idx --;
+
+		if(_idx < MIN_IDX) _idx = MAX_IDX;
+
+		return mapData[_arr[_idx]];
+	};
+};
+
+var Timer = function(seconds, callback) {
+	//var _mm = Math.floor(seconds/60);
+	//var _ss = seconds % 60;
+	var _starting = seconds;
+	var _seconds = seconds;
+	var _callback = callback;
+
+	this.init = function() {
+		this.reset();
+		_callback(_seconds);
+	};
+
+	this.tick = function() {
+		_seconds--;
+		_callback(_seconds);
+	};
+
+	this.reset = function() {
+		_seconds = _starting;
+	};
+};
+
+
 var ban_data = null;
 var createData = function(covs, clss){
 	var phead = [];
@@ -169,49 +215,4 @@ var renderRightBody = function(covs, head) {
 		bodyArr.push(row);
 	}
 	$right.append(bodyArr);
-};
-
-var ImageSlider = function(keys, mapData) {
-	var _arr = keys;
-	var _idx = -1;
-	var MAX_IDX = _arr.length -1;
-	var MIN_IDX = 0;
-
-	this.getNext = function() {
-		_idx ++;
-
-		if(_idx > MAX_IDX) _idx = MIN_IDX;
-
-		return mapData[_arr[_idx]];
-	};
-
-	this.getPrev = function() {
-		_idx --;
-
-		if(_idx < MIN_IDX) _idx = MAX_IDX;
-
-		return mapData[_arr[_idx]];
-	};
-};
-
-var Timer = function(seconds, callback) {
-	//var _mm = Math.floor(seconds/60);
-	//var _ss = seconds % 60;
-	var _starting = seconds;
-	var _seconds = seconds;
-	var _callback = callback;
-
-	this.init = function() {
-		this.reset();
-		_callback(_seconds);
-	};
-
-	this.tick = function() {
-		_seconds--;
-		_callback(_seconds);
-	};
-
-	this.reset = function() {
-		_seconds = _starting;
-	};
 };

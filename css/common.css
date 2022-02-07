@@ -34,8 +34,8 @@ table td { text-align:center;border:1px solid black; }
 
 #ban-team-box { margin-top:50px }
 #ban-team-box .team-title { position:absolute; top:150px;display:inline-block;width:250px;font-size:30px;font-weight:900;color:#FFF; }
-#ban-team-box .team-title.team-title-left  { left:520px;text-align:left; }
-#ban-team-box .team-title.team-title-right  { right:520px;text-align:right; }
+#ban-team-box .team-title.team-title-left  { left:calc(50% - 430px);text-align:left; }
+#ban-team-box .team-title.team-title-right  { right:calc(50% - 430px);text-align:right; }
 #ban-team-box .pick-timer { position: absolute; top: 300px;left: calc(100%/2 - 100px);width: 200px;font-size: 70px;font-weight: 900;color: white;text-align: center; }
 #ban-team-box .pick-timer.timer-warning { color:#ff5252; }
 
@@ -72,7 +72,7 @@ table td { text-align:center;border:1px solid black; }
 .item-slot.time-over .penalty-desc,
 .team-banned .item-slot.time-over .penalty-desc{ opacity:1;transition: all ease 0.5s 0s; }
 
-#ban-spec-list { margin-top:50px; }
+#ban-spec-list { margin-top:20px; }
 .clazz-list .clazz-parent img{ width:50px; }
 .clazz-list .clazz-child img{ width:18px; }
 .covenants-list img{ width:18px; }
@@ -83,7 +83,7 @@ table td { text-align:center;border:1px solid black; }
 
 .instance-container { display:block;height:560px;width:100%;background-size:cover;background-color:transparent;
                       opacity:0.8;position:absolute;top:85px;z-index:-1;border-top:2px solid #AAA;border-bottom:2px solid #AAA;transition: all ease 0.5s 0s;}
-.instance-container .instance-title { position: relative;top: 470px;left: 530px;font-size: 40px;font-weight: 900;color: #FFF; }
+.instance-container .instance-title { position: relative;top: 470px;left: calc(50% - 400px);font-size: 40px;font-weight: 900;color: #FFF; }
 
 .instance-container .slide-btn  { position: absolute;top: 230px;font-size: 100px;cursor:pointer; }
 .instance-container .slide-btn:hover { color: #FFF; }
@@ -95,6 +95,9 @@ table td { text-align:center;border:1px solid black; }
 .banner-alert.banner-on { animation: moveBanner 2s; }
 .banner-alert .banner-alert-msg { margin-top: 50px;text-align: center;color: #FFF;font-size: 80px;font-style: italic;font-weight: 900;background: #0000006b; }
 
+.pick-alert-container { display:block;height:37px;overflow:hidden; }
+.pick-alert-container .pick-alert { border: 3px solid #ffffff;display:block;margin:0 auto;width: 700px;border-radius: 5px;background-color: #000;opacity: 0;animation: flipBackground 3s; }
+.pick-alert-container .pick-alert .pick-alert-msg { color: #e4ff00;padding: 5px 0px;font-size: 16px;font-weight: 700;text-align: center; }
 /*
 .spec-container .clazz-parent .item-box.banned img,
 .spec-container .clazz-child .item-box.banned img,
@@ -127,5 +130,17 @@ table td { text-align:center;border:1px solid black; }
   }
   to {
     height:0;opacity: 0;
+  }
+}
+
+@keyframes flipBackground {
+  from {
+    background-color: #FFF;opacity: 1
+  }
+  70% {
+    background-color: #000;opacity: 1
+  }
+  to {
+    opacity: 0;
   }
 }
